@@ -9,6 +9,7 @@
  *  run asynchronous.
  */
 
+const { json } = require('body-parser');
 const SHA256 = require('crypto-js/sha256');
 const hex2ascii = require('hex2ascii');
 
@@ -39,9 +40,17 @@ class Block {
         let self = this;
         return new Promise((resolve, reject) => {
             // Save in auxiliary variable the current block hash
-                                            
+            const currentHash = self.hash                                
             // Recalculate the hash of the Block
+            const recalculateHashValue=SHA256(self).toString()
             // Comparing if the hashes changed
+            if (currentHash===recalculateHashValue){
+                resolve(true)
+            }
+            else{
+                reject(false)
+
+            }
             // Returning the Block is not valid
             
             // Returning the Block is valid
@@ -60,6 +69,16 @@ class Block {
      */
     getBData() {
         // Getting the encoded data saved in the Block
+        let self = this
+        return new Promise((resolve,reject)=>{
+            const encodedData = self.body
+            const decodedData = JSON.parse(hex2ascii(encodedData))
+            if (self.height !==0){
+                resolve(decodedData)
+            }else{
+                reject("Cant decode data")
+            }
+        })
         // Decoding the data to retrieve the JSON representation of the object
         // Parse the data to an object to be retrieve.
 
