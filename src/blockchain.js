@@ -11,6 +11,7 @@
 const SHA256 = require('crypto-js/sha256');
 const BlockClass = require('./block.js');
 const bitcoinMessage = require('bitcoinjs-message');
+const e = require('express');
 
 class Blockchain {
 
@@ -24,7 +25,7 @@ class Blockchain {
      */
     constructor() {
         this.chain = [];
-        this.height = -1;
+        this.height = 0;
         this.initializeChain();
     }
 
@@ -34,7 +35,7 @@ class Blockchain {
      * Passing as a data `{data: 'Genesis Block'}`
      */
     async initializeChain() {
-        if( this.height === -1){
+        if( this.height === 0){
             let block = new BlockClass.Block({data: 'Genesis Block'});
             await this._addBlock(block);
         }
@@ -44,8 +45,9 @@ class Blockchain {
      * Utility method that return a Promise that will resolve with the height of the chain
      */
     getChainHeight() {
+        let self=this
         return new Promise((resolve, reject) => {
-            resolve(this.height);
+            resolve(self.height);
         });
     }
 
@@ -65,19 +67,19 @@ class Blockchain {
         let self = this;
         return new Promise(async (resolve, reject) => {
             try{
-            const currentBlockHeight = await this.getChainHeight
-           if (currentBlockHeight !=-1){
+            const currentBlockHeight = await self.getChainHeight()
+           if (currentBlockHeight >0){
                 
-                block.previousBlockHash = this.chain[this.chain.length-1].hash
+                block.previousBlockHash = self.chain[self.chain.length-1].hash
            }
-           this.height +=1
-           block.height=this.chain.length
+           self.height +=1
+           block.height=self.chain.length
            block.time= new Date().getTime().toString().slice(0,-3)
            block.hash = SHA256(JSON.stringify(block)).toString()
            
-           this.chain.push(block)
-           resolve(this)}
-           catch{
+           self.chain.push(block)
+           resolve(block)}
+           catch(error){
                reject(new Error('Can not add bl'))
            }
         });
@@ -116,23 +118,23 @@ class Blockchain {
      */
     submitStar(address, message, signature, star) {
         let self = this;
-        let starObject={'owner':address,'star':star}
+        let starObject={owner:address,star:star}
         return new Promise(async (resolve, reject) => {
             let timeSent= parseInt(message.split(':')[1])
             let currentTime = parseInt(new Date().getTime().toString().slice(0, -3))
-            if (currentTime-timeSent>30000 && bitcoinMessage.verify(message,address,signature)){
-                newBlock=new BlockClass.block(starObject)
+            if (currentTime-timeSent>300 && bitcoinMessage.verify(message,address,signature)){
+                    try{
+                        let block = await self._addBlock(new BlockClass.Block(starObject))
+                        resolve(block)}
                 
-                try{
-                    this._addBlock(newBlock)
-                    resolve(newBlock)
-                }catch(error){
-                    reject(new Error("Cant add block to blockchain"))
+                    catch(error){
+                        reject(new Error("Cant add block to blockchain"))
                 }
-            }else{
-                reject(new Error("cant verify message"))
-            }
-        });
+                
+        }   else{
+                    reject(new Error("cant verify sig"))
+        }
+    });
     }
 
     /**
@@ -182,8 +184,8 @@ class Blockchain {
         let decodedBlocks=self.chain.map(block=>block.getBData())
         return new Promise((resolve, reject) => {
             decodedBlocks.forEach(decodedBody=>{
-                if (decodedBody.address===address){
-                    stars.push(decodedBody.star)
+                if (decodedBody.owner===address){
+                    stars.push(decodedBody)
                 }
             })
             resolve(stars)
@@ -200,7 +202,7 @@ class Blockchain {
         let self = this;
         let errorLog = [];
         return new Promise(async (resolve, reject) => {
-            self.chain.map(block=> errorLog.push(await block.validate()))
+            self.chain.map(async block=> errorLog.push(await block.validate()))
             resolve(errorLog)
         });
     }
