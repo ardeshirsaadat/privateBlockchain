@@ -70,7 +70,7 @@ class Blockchain {
 
             try{
                 let errors=await self.validateChain()
-                if (errors.includes(false)){
+                if (errors.length>0){
                     reject(new Error('block has been tamperd with'))
                 }
             const currentBlockHeight = await self.getChainHeight()
@@ -208,12 +208,17 @@ class Blockchain {
         let self = this;
         let errorLog=[]
         return new Promise(async (resolve, reject) => {
-            self.chain.map(async (block,index,array)=>{
-                errorLog.push(await block.validate())
-                if(array[index+1]){
-                    errorLog.push(block.hash[index]===block.previousBlockHash[index+1])
-                }
-            })
+           
+            for (let i = 1; i < self.chain.length; i++) {
+
+                const currentBlock = self.chain[i]
+                const previousBlock =self.chain[i-1]
+                if ( !(await currentBlock.validate()) || (currentBlock.previousBlockHash!==previousBlock.hash) ) {
+                    errorLog.push({
+                        error: 'Block validation failed',
+                        block: currentBlock
+                    });
+                }}
             resolve(errorLog)
         }).catch(new Error("validation procces gone wrong"));
     }
