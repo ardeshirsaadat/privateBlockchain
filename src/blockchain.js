@@ -66,7 +66,13 @@ class Blockchain {
     _addBlock(block) {
         let self = this;
         return new Promise(async (resolve, reject) => {
+            
+
             try{
+                let errors=await self.validateChain()
+                if (errors.includes(false)){
+                    reject(new Error('block has been tamperd with'))
+                }
             const currentBlockHeight = await self.getChainHeight()
            if (currentBlockHeight >0){
                 
@@ -122,7 +128,7 @@ class Blockchain {
         return new Promise(async (resolve, reject) => {
             let timeSent= parseInt(message.split(':')[1])
             let currentTime = parseInt(new Date().getTime().toString().slice(0, -3))
-            if (currentTime-timeSent>300 && bitcoinMessage.verify(message,address,signature)){
+            if (currentTime-timeSent<=300 && bitcoinMessage.verify(message,address,signature)){
                     try{
                         let block = await self._addBlock(new BlockClass.Block(starObject))
                         resolve(block)}
@@ -200,13 +206,16 @@ class Blockchain {
      */
     validateChain() {
         let self = this;
-        let errorLog = [];
+        let errorLog=[]
         return new Promise(async (resolve, reject) => {
-            self.chain.map(async block=> errorLog.push(await block.validate()))
+            self.chain.map(async (block,index,array)=>{
+                errorLog.push(await block.validate())
+                if(array[index+1]){
+                    errorLog.push(block.hash[index]===block.previousBlockHash[index+1])
+                }
+            })
             resolve(errorLog)
-        });
+        }).catch(new Error("validation procces gone wrong"));
     }
-
 }
-
 module.exports.Blockchain = Blockchain;   

@@ -45,11 +45,12 @@ class Block {
             // Recalculate the hash of the Block
             const recalculateHashValue=SHA256(JSON.stringify(self)).toString()
             // Comparing if the hashes changed
+            self.hash=currentHash
             if (currentHash===recalculateHashValue){
                 resolve(true)
             }
             else{
-                reject(false)
+                resolve(false)
 
             }
             // Returning the Block is not valid
